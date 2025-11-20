@@ -1,11 +1,12 @@
-// ui.js - UI 渲染與 Chart.js 繪圖 (V11.0)
+// ui.js - UI 渲染與 Chart.js 繪圖
+
 import { GAME_STATE } from './model.js'; 
 
 let economicChartInstance = null;
 
 function renderChangeIndicator(currentValue, previousValue, elementId) {
     const change = currentValue - previousValue;
-    // V11.0: 避免除以零錯誤
+    
     if (previousValue === 0 || isNaN(previousValue)) {
          if (currentValue > 0) previousValue = 1; else previousValue = 1000;
     }
@@ -56,20 +57,20 @@ export function updateUI(rateAdjustment) {
     // 股市指數顯示
     document.getElementById('stock-index-display').textContent = `${GAME_STATE.stockIndex.toFixed(0)}`;
     
-    // V11.0：券商動態顯示
+    // 券商動態顯示
     const brokerageFlowEl = document.getElementById('brokerage-flow');
     const flow = GAME_STATE.brokerageFlow;
     
     brokerageFlowEl.textContent = flow > 0 ? `淨買入 +${flow}` : `淨賣出 ${flow}`;
     brokerageFlowEl.style.color = flow > 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
-    // V11.0：股市漲跌幅
+    // 股市漲跌幅
     renderChangeIndicator(GAME_STATE.stockIndex, GAME_STATE.previousStockIndex, 'stock-change');
     
     // 更新交易介面價格
     document.getElementById('current-index-price').textContent = GAME_STATE.stockIndex.toFixed(2);
 
-    // V11.0：信譽度和情緒顯示
+    // 信譽度和情緒顯示
     document.getElementById('credibility-display').textContent = `${GAME_STATE.credibility.toFixed(0)}/100`;
 
     let sentimentText = "中立 🟡";
@@ -104,7 +105,6 @@ export function drawCombinedChart() {
     const cpiValues = GAME_STATE.history.map(item => item.cpi);
     const unempValues = GAME_STATE.history.map(item => item.unemployment);
     const stockIndexValues = GAME_STATE.history.map(item => item.stockIndex); 
-    // V11.0 移除 portfolioValues
 
     if (economicChartInstance) {
         economicChartInstance.destroy();
