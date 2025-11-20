@@ -1,4 +1,4 @@
-// js/ui.js - UI 渲染與 Chart.js 繪圖 (模組化)
+// ui.js - UI 渲染與 Chart.js 繪圖 (模組化)
 import { GAME_STATE } from './model.js'; // 導入模型狀態
 
 let economicChartInstance = null;
