@@ -3,57 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>聯儲主席模擬器 V2.0：宏觀經濟主宰</title>
+    <title>聯儲主席模擬器 V7.0：極致用戶體驗</title>
     <link rel="stylesheet" href="style.css"> 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
     <header>
-        <h1>聯儲主席模擬器 V2.0：宏觀經濟主宰</h1>
+        <h1>聯儲主席模擬器 V7.0：市場與貨幣雙重主宰</h1>
     </header>
 
     <main>
-        <section id="interface-section">
+        <section id="top-section">
             
-            <div id="data-display" class="interface-panel">
-                <h2>📊 核心經濟指標</h2>
-                <p>現行利率: <span id="currentRateDisplay" class="large-value">0.00%</span></p>
-                <hr>
-                <p>通膨 (CPI): <span id="cpi-display" class="data-value">0.00%</span> (目標 2.0%)</p>
-                <p>失業率: <span id="unemployment-display" class="data-value">0.00%</span></p>
-                <p>GDP 增長: <span id="gdp-display" class="data-value">0.00%</span></p>
-                <hr>
-                <p>信譽度: <span id="credibility-display">0</span>/100</p>
-                <p>市場情緒: <span id="market-sentiment-display">...</span></p>
-            </div>
-            
-            <div id="decision-interface" class="interface-panel">
+            <div id="decision-interface" class="card decision-panel">
                 <h2 id="turn-header">決策介面 (回合: 2024-01)</h2>
                 
                 <label for="rate-slider">基準利率調整 (每月):</label>
                 <div class="slider-container">
                     <input type="range" id="rate-slider" min="-100" max="100" value="0" step="5">
-                    <span id="rate-adjustment-display">0.00%</span> (調整量)
+                    <span id="rate-adjustment-display" class="large-value neutral">0.00%</span> (調整量)
                 </div>
 
-                <button id="commit-decision">發布決策並進入下一回合</button>
+                <button id="commit-decision" class="primary-btn">發布決策並進入下一回合</button>
+            </div>
+            
+            <div id="data-display" class="card data-panel">
+                <h2>📊 核心經濟指標</h2>
+                <div class="data-group">
+                    <p>現行利率: <span id="currentRateDisplay" class="data-value large-value">0.00%</span></p>
+                    <p>通膨 (CPI): <span id="cpi-display" class="data-value">0.00%</span> (目標 2.0%)</p>
+                    <p>失業率: <span id="unemployment-display" class="data-value">0.00%</span></p>
+                    <p>GDP 增長: <span id="gdp-display" class="data-value">0.00%</span></p>
+                </div>
+            </div>
+            
+            <div id="trading-interface" class="card trading-panel">
+                <h2>💼 證券交易</h2>
+                <div class="data-group">
+                    <p>股市指數 (S&P): <span id="stock-index-display" class="data-value">0</span> <span id="stock-change" class="change-indicator"></span></p>
+                    <p>當前股價: <span id="current-index-price" class="data-value">0</span></p>
+                    <label for="trade-quantity">交易股數 (Shares):</label>
+                    <input type="number" id="trade-quantity" min="1" value="10">
+                    
+                    <div class="transaction-buttons">
+                        <button id="buy-btn" class="buy-btn">買入 (BUY)</button>
+                        <button id="sell-btn" class="sell-btn">賣出 (SELL)</button>
+                    </div>
+                    <p id="transaction-feedback" class="feedback-message">等待交易指令...</p>
+                </div>
             </div>
         </section>
 
-        <section id="message-section">
-            <h3>📰 聯儲新聞頭條</h3>
-            <p id="news-ticker">遊戲初始化中...</p>
+        <section id="bottom-section">
+            <div id="asset-display" class="card asset-panel">
+                <h2>💰 個人資產與信譽</h2>
+                <div class="data-group">
+                    <p>可用現金 (USD): <span id="cash-display" class="data-value large-value">$$0</span></p>
+                    <p>持有股數 (Shares): <span id="stock-holdings-display" class="data-value">0</span></p>
+                    <p class="total-portfolio">總資產價值: <span id="portfolio-display" class="data-value large-value">$$0</span> <span id="portfolio-change" class="change-indicator"></span></p>
+                    <hr>
+                    <p>信譽度: <span id="credibility-display" class="data-value">0</span>/100</p>
+                    <p>市場情緒: <span id="market-sentiment-display" class="data-value">...</span></p>
+                </div>
+            </div>
+
+            <div id="message-section" class="card news-panel">
+                <h2>📰 即時新聞頭條 (V7.0)</h2>
+                <p id="news-ticker" class="news-content">遊戲初始化中...</p>
+            </div>
         </section>
 
-        <section id="chart-section">
+        <section id="chart-section" class="card chart-panel">
             <canvas id="economicChart"></canvas>
         </section>
 
     </main>
 
     <footer>
-        <p>&copy; 2024 FED Simulator V2.0</p>
+        <p>&copy; 2024 FED Simulator V7.0</p>
     </footer>
 
     <script src="api-keys.js"></script> 
