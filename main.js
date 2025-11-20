@@ -1,12 +1,12 @@
-// main.js - 遊戲主入口與流程控制
+// main.js - 遊戲主入口與流程控制 (V14.0 週期化修正)
 
 import { GAME_STATE, initializeModel, nextTurnModel } from './model.js'; 
 import { updateUI, drawCombinedChart, setNews } from './ui.js'; 
 
 // --- 靜態初始值 ---
-const START_RATE = 4.25;    // 聯邦基金利率
-const START_CPI = 3.0;      // 通脹率
-const START_UNEMP = 4.0;    // 失業率
+const START_RATE = 4.25;    
+const START_CPI = 3.0;      
+const START_UNEMP = 4.0;    
 
 // --- 經濟指標新聞生成函數 (V12.0) ---
 function checkEconomicIndicatorsNews() {
@@ -41,6 +41,7 @@ function checkEconomicIndicatorsNews() {
     // 5. 預設中立狀態
     return null;
 }
+
 // --- 遊戲流程控制 ---
 
 async function initializeGame() {
@@ -49,7 +50,7 @@ async function initializeGame() {
     
     // 確保歷史記錄至少有一個點
     GAME_STATE.history.push({
-        date: "2024-01", 
+        date: "2024-Q1", // V14.0: 更改為季度顯示
         rate: START_RATE, 
         cpi: START_CPI, 
         unemployment: START_UNEMP, 
@@ -60,7 +61,7 @@ async function initializeGame() {
     
     drawCombinedChart();
     updateUI(0);
-    setNews('✅ 模擬模式啟動！您現在是聯儲主席，請發布您的第一個決策。');
+    setNews('✅ 模擬模式啟動！您的首次決策將影響接下來的三個月。'); // V14.0: 新的初始化提示
 }
 
 function handleNextTurn() {
@@ -103,7 +104,7 @@ function handleNextTurn() {
         } else if (credibilityDelta > 0) {
             setNews('👍 聯儲政策穩健，信譽度提升！');
         } else {
-             setNews('✅ 政策已發布。市場正在消化中...');
+             setNews('✅ 季度政策已發布。市場正在消化接下來三個月的影響...');
         }
     }
     
@@ -122,12 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const rateInput = document.getElementById('rate-slider');
     const commitBtn = document.getElementById('commit-decision');
 
+    // V14.0: 調整 UI 顯示為季度
     rateInput.addEventListener('input', () => {
         const rateAdjustment = parseFloat(rateInput.value) / 100; 
         updateUI(rateAdjustment); 
         
         const targetRate = GAME_STATE.currentRate + rateAdjustment;
-        setNews(`💡 預計調整後利率為: ${targetRate.toFixed(2)}%`);
+        setNews(`💡 預計調整後利率為: ${targetRate.toFixed(2)}% (季度決策)`);
     });
 
     commitBtn.addEventListener('click', handleNextTurn);
