@@ -1,4 +1,4 @@
-// js/model.js - 核心經濟模擬模型 (模組化)
+// model.js - 核心經濟模擬模型 (模組化)
 
 // --- 核心常數 ---
 const CPI_TARGET = 2.0;
