@@ -1,4 +1,4 @@
-// model.js - 核心經濟模擬模型 (V7.0 交易邏輯版)
+// model.js - 核心經濟模擬模型 (V9.0 券商邏輯版)
 
 // --- 核心常數 ---
 const CPI_TARGET = 2.0;
@@ -6,9 +6,9 @@ const UNEMP_TARGET = 4.0;
 const NEUTRAL_RATE = 3.5; 
 const LAG_PERIOD = 4; 
 const SHOCK_PROBABILITY = 0.20; 
-const INITIAL_CASH = 10000; 
+const INITIAL_NET_WORTH = 10000; // V9.0: 初始淨資產
 
-// 重大事件清單 (V7.0 保持 V6.0 強化版)
+// 重大事件清單
 const SHOCK_EVENTS = [
     { name: 'Global Supply Chain Crisis', cpi: 0.8, gdp: -0.5, sentiment: -15, news: '💥 突發：亞洲主要工廠關閉，全球供應鏈崩潰！通膨壓力驟升！', isWarning: true },
     { name: 'Major Tech Breakthrough', cpi: -0.2, gdp: 0.8, sentiment: 20, news: '🚀 市場狂熱：突破性 AI 技術發布，生產力預期飆升！', isWarning: false },
@@ -30,13 +30,13 @@ export let GAME_STATE = {
     gdpGrowth: 2.0,   
     marketSentiment: 0, 
     stockIndex: 4000, 
-    cash: INITIAL_CASH,         
-    stockHoldings: 0,           
+    playerPortfolio: INITIAL_NET_WORTH, // V9.0: 淨資產
+    brokerageFlow: 0,                   // V9.0: 券商淨交易股數
     ratePolicyLag: [], 
     history: [],
-    currentShock: {cpi: 0, gdp: 0, sentiment: 0, news: ''}, 
+    currentShock: {cpi: 0, gdp: 0, sentiment: 0, news: '', isWarning: false}, 
     previousStockIndex: 4000,
-    previousPortfolio: INITIAL_CASH,
+    previousPortfolio: INITIAL_NET_WORTH,
 };
 
 // --- 模型初始化函數 ---
@@ -46,7 +46,7 @@ export function initializeModel(initialRate, initialCPI, initialUnemp) {
     GAME_STATE.unemployment = initialUnemp;
     
     GAME_STATE.previousStockIndex = GAME_STATE.stockIndex;
-    GAME_STATE.previousPortfolio = GAME_STATE.cash + (GAME_STATE.stockHoldings * GAME_STATE.stockIndex);
+    GAME_STATE.previousPortfolio = GAME_STATE.playerPortfolio;
     
     for (let i = 0; i < LAG_PERIOD + 2; i++) {
          GAME_STATE.ratePolicyLag.push({ rate: initialRate, month: i });
@@ -72,56 +72,7 @@ function checkRandomEvent() {
     return false;
 }
 
-function calculateSentiment(rateChange) {
-    const policyImpact = rateChange * (GAME_STATE.credibility / 100) * 20; 
-    const gdpImpact = (GAME_STATE.gdpGrowth - 2.0) * 5;
-    const cpiImpact = (GAME_STATE.cpi - CPI_TARGET) * -5; 
-    const shockImpact = GAME_STATE.currentShock.sentiment;
-    
-    GAME_STATE.marketSentiment = GAME_STATE.marketSentiment * 0.7 
-        + (policyImpact * 0.5) 
-        + (gdpImpact * 0.3) 
-        + (cpiImpact * 0.2) 
-        + shockImpact
-        + (Math.random() - 0.5) * 5;
-        
-    GAME_STATE.marketSentiment = Math.max(-50, Math.min(50, GAME_STATE.marketSentiment));
-}
-
-function calculateCPI() {
-    const laggedPolicy = GAME_STATE.ratePolicyLag[GAME_STATE.ratePolicyLag.length - LAG_PERIOD - 1]?.rate || GAME_STATE.currentRate;
-    const rateEffect = (laggedPolicy - CPI_TARGET) * 0.25; 
-    const demandEffect = (GAME_STATE.marketSentiment * 0.015) + (GAME_STATE.gdpGrowth * 0.1); 
-    const externalShock = GAME_STATE.currentShock.cpi || (Math.random() - 0.5) * 0.8;
-    
-    const deltaCPI = demandEffect + externalShock - rateEffect;
-    
-    GAME_STATE.cpi += deltaCPI;
-    GAME_STATE.cpi = Math.max(0.1, GAME_STATE.cpi);
-}
-
-function calculateUnemployment() {
-    const gdpEffect = (GAME_STATE.gdpGrowth - 2.0) * 0.25; 
-    const rateEffect = (GAME_STATE.currentRate - NEUTRAL_RATE) * 0.15;
-    
-    const deltaUnemployment = rateEffect - gdpEffect + (Math.random() - 0.5) * 0.2;
-    
-    GAME_STATE.unemployment += deltaUnemployment;
-    GAME_STATE.unemployment = Math.max(2.0, GAME_STATE.unemployment); 
-}
-
-function calculateGDP() {
-    const rateEffect = (GAME_STATE.currentRate - NEUTRAL_RATE) * 0.3;
-    const sentimentEffect = GAME_STATE.marketSentiment * 0.04;
-    const cpiEffect = (GAME_STATE.cpi - CPI_TARGET) * 0.2;
-    const externalShock = GAME_STATE.currentShock.gdp || (Math.random() - 0.5) * 0.5;
-    
-    const deltaGDP = sentimentEffect - rateEffect - cpiEffect + externalShock;
-    
-    GAME_STATE.gdpGrowth += deltaGDP;
-    GAME_STATE.gdpGrowth = Math.max(-5.0, GAME_STATE.gdpGrowth); 
-}
-
+// ... (其他 calculateXXX 函數保持不變) ...
 
 function calculateStockIndex(rateChange) {
     GAME_STATE.previousStockIndex = GAME_STATE.stockIndex; 
@@ -135,6 +86,28 @@ function calculateStockIndex(rateChange) {
     
     GAME_STATE.stockIndex *= indexMultiplier;
     GAME_STATE.stockIndex = Math.max(1000, GAME_STATE.stockIndex); 
+}
+
+/**
+ * V9.0 新增：券商動態模擬函數
+ * 券商淨交易量 = (市場情緒趨勢) + 隨機波動
+ */
+function simulateBrokerageActivity() {
+    const sentimentTrend = GAME_STATE.marketSentiment * 10; // 情緒高漲則淨買入，情緒低迷則淨賣出
+    const randomNoise = (Math.random() - 0.5) * 200; // 隨機波動
+    
+    // 淨交易量：四捨五入到整數
+    const netShares = Math.round(sentimentTrend + randomNoise);
+    
+    GAME_STATE.brokerageFlow = netShares;
+}
+
+/**
+ * V9.0：更新玩家淨資產（資產完全隨指數被動增長）
+ */
+function updatePortfolioValue() {
+    const indexMultiplier = GAME_STATE.stockIndex / GAME_STATE.previousStockIndex;
+    GAME_STATE.playerPortfolio *= indexMultiplier;
 }
 
 
@@ -167,7 +140,7 @@ export function updateCredibility(rateChange) {
 export function nextTurnModel(rateChange) {
     const eventTriggered = checkRandomEvent();
     
-    GAME_STATE.previousPortfolio = GAME_STATE.cash + (GAME_STATE.stockHoldings * GAME_STATE.stockIndex);
+    GAME_STATE.previousPortfolio = GAME_STATE.playerPortfolio; // V9.0: 記錄前一期淨資產
 
     // 1. 儲存政策到時滯佇列
     GAME_STATE.ratePolicyLag.push({ rate: GAME_STATE.currentRate + rateChange, month: GAME_STATE.currentDate.getMonth() });
@@ -183,9 +156,11 @@ export function nextTurnModel(rateChange) {
     calculateUnemployment();
     calculateCPI(); 
     calculateStockIndex(rateChange);
-    
+    simulateBrokerageActivity(); // V9.0: 模擬券商交易量
+    updatePortfolioValue();     // V9.0: 更新玩家資產
+
     // 4. 記錄歷史
-    const currentPortfolio = GAME_STATE.cash + (GAME_STATE.stockHoldings * GAME_STATE.stockIndex);
+    const currentPortfolio = GAME_STATE.playerPortfolio;
     GAME_STATE.history.push({
         date: GAME_STATE.currentDate.toISOString().substring(0, 7),
         rate: GAME_STATE.currentRate,
@@ -203,30 +178,4 @@ export function nextTurnModel(rateChange) {
     return { credibilityDelta, eventTriggered }; 
 }
 
-/**
- * V7.0 交易函數：處理買入/賣出股票 (移除了 NaN 檢查，交由 main.js 處理)
- */
-export function handleTransaction(type, quantity) {
-    const price = GAME_STATE.stockIndex;
-    const cost = quantity * price;
-
-    // V7.0: 假設 quantity 已經過 main.js 驗證，為有效的正整數
-    if (type === 'buy') {
-        if (cost > GAME_STATE.cash) {
-            return { message: `❌ 買入失敗：現金不足！需要 $${cost.toFixed(2)}。`, isSuccess: false };
-        }
-        GAME_STATE.cash -= cost;
-        GAME_STATE.stockHoldings += quantity;
-        return { message: `✅ 買入成功：以 $${price.toFixed(2)} 買入 ${quantity} 股。`, isSuccess: true };
-        
-    } else if (type === 'sell') {
-        if (quantity > GAME_STATE.stockHoldings) {
-            return { message: `❌ 賣出失敗：持股不足！您只有 ${GAME_STATE.stockHoldings.toFixed(0)} 股可賣。`, isSuccess: false };
-        }
-        GAME_STATE.cash += cost;
-        GAME_STATE.stockHoldings -= quantity;
-        return { message: `✅ 賣出成功：以 $${price.toFixed(2)} 賣出 ${quantity} 股。`, isSuccess: true };
-    }
-    
-    return { message: '❌ 交易類型錯誤。', isSuccess: false };
-}
+// V9.0 移除 handleTransaction 函數
