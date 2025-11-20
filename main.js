@@ -1,5 +1,6 @@
-// js/main.js - 遊戲主入口與流程控制 (模組化)
+// main.js - 遊戲主入口與流程控制 (模組化)
 
+// 模組路徑已修正為根目錄 (.)
 import { GAME_STATE, initializeModel, nextTurnModel } from './model.js';
 import { updateUI, drawCombinedChart, setNews } from './ui.js';
 
@@ -8,13 +9,14 @@ const FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations";
 const DATA_SERIES = {
     FED_RATE: 'FEDFUNDS', 
     CPI: 'CPIAUCSL',      
-    UNEMPLOYMENT: 'UNRATE', // 新增失業率數據
+    UNEMPLOYMENT: 'UNRATE', 
 };
 const START_DATE = '2022-01-01';
 
 async function getFredData(seriesId) {
+    // FRED_API_KEY 從 api-keys.js 載入
     if (typeof FRED_API_KEY === 'undefined') {
-        console.error("錯誤：FRED_API_KEY 未定義。請檢查 api-keys.js 檔案。");
+        console.error("錯誤：FRED_API_KEY 未定義。請檢查 api-keys.js 檔案或 Vercel 環境變數。");
         return null;
     }
     const url = `${FRED_BASE_URL}?series_id=${seriesId}&api_key=${FRED_API_KEY}&file_type=json&observation_start=${START_DATE}`;
@@ -83,7 +85,6 @@ function handleNextTurn() {
     // 遊戲結束檢查
     if (GAME_STATE.credibility <= 0) {
         alert("💥 聯儲信譽度歸零！您因嚴重失職被國會解職。遊戲結束！");
-        // 可以在這裡顯示一個專業結算畫面
         return; 
     }
     
