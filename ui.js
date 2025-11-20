@@ -1,8 +1,9 @@
-// ui.js - UI 渲染與 Chart.js 繪圖 (V7.0)
+// ui.js - UI 渲染與 Chart.js 繪圖 (V9.0)
 import { GAME_STATE } from './model.js'; 
 
 let economicChartInstance = null;
 
+// V6.0/V9.0: 渲染漲跌幅和箭頭
 function renderChangeIndicator(currentValue, previousValue, elementId) {
     const change = currentValue - previousValue;
     const percentChange = (change / previousValue) * 100;
@@ -37,12 +38,7 @@ export function setNews(message, isWarning = false) {
     newsPanel.style.border = isWarning ? `1px solid var(--danger-color)` : `1px solid var(--border-color)`;
 }
 
-
-export function setTransactionFeedback(message, isSuccess = true) {
-    const feedbackEl = document.getElementById('transaction-feedback');
-    feedbackEl.textContent = message;
-    feedbackEl.style.color = isSuccess ? 'var(--success-color)' : 'var(--danger-color)';
-}
+// V9.0: 移除 setTransactionFeedback
 
 
 export function updateUI(rateAdjustment) {
@@ -55,13 +51,15 @@ export function updateUI(rateAdjustment) {
     document.getElementById('unemployment-display').textContent = `${GAME_STATE.unemployment.toFixed(2)}%`;
     document.getElementById('gdp-display').textContent = `${GAME_STATE.gdpGrowth.toFixed(2)}%`;
     
-    // 股市和資產
-    const totalPortfolio = GAME_STATE.cash + (GAME_STATE.stockHoldings * GAME_STATE.stockIndex);
-    document.getElementById('stock-index-display').textContent = `${GAME_STATE.stockIndex.toFixed(0)}`;
-    document.getElementById('cash-display').textContent = `$${GAME_STATE.cash.toFixed(2)}`;
-    document.getElementById('stock-holdings-display').textContent = `${GAME_STATE.stockHoldings.toFixed(0)}`;
+    // V9.0：更新資產總值
+    const totalPortfolio = GAME_STATE.playerPortfolio;
     document.getElementById('portfolio-display').textContent = `$${totalPortfolio.toFixed(2)}`;
     
+    // V9.0：券商動態顯示
+    const brokerageFlowEl = document.getElementById('brokerage-flow');
+    brokerageFlowEl.textContent = GAME_STATE.brokerageFlow > 0 ? `淨買入 ${GAME_STATE.brokerageFlow}` : `淨賣出 ${Math.abs(GAME_STATE.brokerageFlow)}`;
+    brokerageFlowEl.style.color = GAME_STATE.brokerageFlow > 0 ? 'var(--success-color)' : 'var(--danger-color)';
+
     // 顯示漲跌幅
     renderChangeIndicator(GAME_STATE.stockIndex, GAME_STATE.previousStockIndex, 'stock-change');
     renderChangeIndicator(totalPortfolio, GAME_STATE.previousPortfolio, 'portfolio-change');
@@ -86,7 +84,6 @@ export function updateUI(rateAdjustment) {
 
     rateDisplay.textContent = `${targetAdjustment}% (調整量)`;
 
-    // 根據調整量設定顏色
     if (parseFloat(targetAdjustment) > 0) {
         rateDisplay.className = 'large-value positive-adjust'; 
     } else if (parseFloat(targetAdjustment) < 0) {
@@ -97,6 +94,7 @@ export function updateUI(rateAdjustment) {
 }
 
 export function drawCombinedChart() {
+    // ... (Chart 繪圖邏輯保持不變)
     const ctx = document.getElementById('economicChart').getContext('2d');
     
     const labels = GAME_STATE.history.map(item => item.date);
