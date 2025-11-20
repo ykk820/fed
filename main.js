@@ -1,101 +1,73 @@
-// main.js - 遊戲主入口與流程控制 (V9.0)
+// main.js - 遊戲主入口與流程控制 (V12.0 宏觀反應版)
 
-import { GAME_STATE, initializeModel, nextTurnModel } from './model.js'; // V9.0 移除 handleTransaction
+import { GAME_STATE, initializeModel, nextTurnModel } from './model.js'; 
 import { updateUI, drawCombinedChart, setNews } from './ui.js'; 
 
-// --- FRED API 獲取 (保持不變) ---
-const FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations";
-const DATA_SERIES = {
-    FED_RATE: 'FEDFUNDS', 
-    CPI: 'CPIAUCSL',      
-    UNEMPLOYMENT: 'UNRATE', 
-};
-const START_DATE = '2022-01-01';
+// --- 靜態初始值 ---
+const START_RATE = 4.25;    // 聯邦基金利率
+const START_CPI = 3.0;      // 通脹率
+const START_UNEMP = 4.0;    // 失業率
+const START_PORTFOLIO = 10000; // 初始資產
 
-async function getFredData(seriesId) {
-    if (typeof FRED_API_KEY === 'undefined') {
-        console.error("錯誤：FRED_API_KEY 未定義。請檢查 api-keys.js 檔案或 Vercel 環境變數。");
-        return null;
+// --- 經濟指標新聞生成函數 (V12.0 新增) ---
+function checkEconomicIndicatorsNews() {
+    const CPI_TARGET = 2.0;
+    const UNEMP_TARGET = 4.0;
+    
+    // 1. 檢查通縮/通膨失控
+    if (GAME_STATE.cpi > CPI_TARGET + 1.5) {
+        return { news: `🚨 核心通膨警報：CPI 飆升至 ${GAME_STATE.cpi.toFixed(2)}%，市場預期聯儲將強力升息！`, isWarning: true };
     }
-    const url = `${FRED_BASE_URL}?series_id=${seriesId}&api_key=${FRED_API_KEY}&file_type=json&observation_start=${START_DATE}`;
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        const observations = data.observations
-            .filter(obs => obs.value !== '.')
-            .map(obs => ({
-                date: obs.date,
-                value: parseFloat(obs.value)
-            }));
-        return observations;
-    } catch (error) {
-        console.error(`獲取 ${seriesId} 數據時發生錯誤:`, error);
-        return null;
+    if (GAME_STATE.cpi < CPI_TARGET - 1.0) {
+        return { news: `🥶 通縮威脅：CPI 跌至 ${GAME_STATE.cpi.toFixed(2)}% 以下，需求嚴重疲軟，經濟衰退風險增加。`, isWarning: true };
     }
+    
+    // 2. 檢查失業率崩潰/過熱
+    if (GAME_STATE.unemployment > UNEMP_TARGET + 2.0) {
+        return { news: `📉 就業市場崩潰：失業率飆升至 ${GAME_STATE.unemployment.toFixed(2)}%，民生壓力巨大。`, isWarning: true };
+    }
+    
+    // 3. 檢查雙重使命達標 (CPI和失業率都接近目標)
+    const cpiDiff = Math.abs(GAME_STATE.cpi - CPI_TARGET);
+    const unempDiff = Math.abs(GAME_STATE.unemployment - UNEMP_TARGET);
+    if (cpiDiff <= 0.5 && unempDiff <= 0.5) {
+        return { news: `🎉 雙重使命達標：CPI 和失業率皆在理想區間，政策獲得高度肯定！`, isWarning: false };
+    }
+
+    // 4. 檢查通膨壓力 (中度偏差)
+    if (GAME_STATE.cpi > CPI_TARGET + 0.5) {
+        return { news: `⚠️ 通膨壓力持續：CPI 維持在 ${GAME_STATE.cpi.toFixed(2)}%，聯儲需採取行動。`, isWarning: true };
+    }
+    
+    // 5. 預設中立狀態
+    return null;
 }
-
 // --- 遊戲流程控制 ---
 
 async function initializeGame() {
-    setNews('正在從 FRED 獲取歷史數據... 📶');
     
-    const [fedRateData, cpiData, unempData] = await Promise.all([
-        getFredData(DATA_SERIES.FED_RATE),
-        getFredData(DATA_SERIES.CPI),
-        getFredData(DATA_SERIES.UNEMPLOYMENT)
-    ]);
+    // V10.0: 直接使用靜態值啟動遊戲
     
-    if (fedRateData && cpiData && unempData) {
-        // V9.0: 成功邏輯 (保持不變)
-        const lastRate = fedRateData[fedRateData.length - 1].value;
-        const lastCPI = cpiData[cpiData.length - 1].value;
-        const lastUnemp = unempData[unempData.length - 1].value;
+    initializeModel(START_RATE, START_CPI, START_UNEMP);
 
-        initializeModel(lastRate, lastCPI, lastUnemp);
-        
-        GAME_STATE.history = fedRateData.map(d => {
-            const cpiItem = cpiData.find(c => c.date === d.date);
-            const unempItem = unempData.find(u => u.date === d.date);
-            return {
-                date: d.date,
-                rate: d.value,
-                cpi: cpiItem ? cpiItem.value : lastCPI,
-                unemployment: unempItem ? unempItem.value : lastUnemp,
-                gdpGrowth: 2.0, 
-                sentiment: 0
-            };
-        });
-        
-        drawCombinedChart();
-        updateUI(0); 
-        setNews('🚀 遊戲初始化完成！您現在是聯儲主席，請發布您的第一個決策。');
-
-    } else {
-        // V9.0: 備用機制 - 使用靜態數據啟動遊戲 (解決 API 無法連接問題)
-        const START_RATE = 4.25;
-        const START_CPI = 3.0;
-        const START_UNEMP = 4.0;
-        
-        console.error("初始化失敗，無法從 FRED API 獲取必要數據。遊戲已切換至備用靜態模式。");
-        
-        initializeModel(START_RATE, START_CPI, START_UNEMP);
-        
-        // 確保歷史記錄至少有一個點
-        GAME_STATE.history.push({
-            date: "2024-01-01", 
-            rate: START_RATE, 
-            cpi: START_CPI, 
-            unemployment: START_UNEMP, 
-            gdpGrowth: 2.0, 
-            sentiment: 0, 
-            stockIndex: GAME_STATE.stockIndex, 
-            portfolio: GAME_STATE.playerPortfolio,
-        });
-        
-        drawCombinedChart();
-        updateUI(0);
-        setNews('⚠️ 數據服務中斷：遊戲已啟動模擬模式 (使用靜態初始值)。請發布第一個決策。', true);
-    }
+    // 設置初始資產
+    // V11.0: 移除 playerPortfolio 相關邏輯
+    
+    // 確保歷史記錄至少有一個點
+    GAME_STATE.history.push({
+        date: "2024-01", 
+        rate: START_RATE, 
+        cpi: START_CPI, 
+        unemployment: START_UNEMP, 
+        gdpGrowth: 2.0, 
+        sentiment: 0, 
+        stockIndex: GAME_STATE.stockIndex, 
+        // V11.0: 移除 portfolio
+    });
+    
+    drawCombinedChart();
+    updateUI(0);
+    setNews('✅ 模擬模式啟動！您現在是聯儲主席，請發布您的第一個決策。');
 }
 
 function handleNextTurn() {
@@ -109,14 +81,27 @@ function handleNextTurn() {
     
     const { credibilityDelta, eventTriggered } = nextTurnModel(rateAdjustment);
     
-    // V9.0: 移除交易回饋 (交易介面已移除) 
+    // --- V12.0 新聞優先級處理 ---
+    let newsHandled = false;
     
-    // --- 新聞優先級處理 ---
+    // 1. 最高優先級：隨機事件新聞 (黑天鵝)
     if (eventTriggered) {
         const { news, isWarning } = GAME_STATE.currentShock;
         setNews(news, isWarning);
+        newsHandled = true;
+    }
     
-    } else {
+    // 2. 次高優先級：經濟指標新聞 (基於數據的市場反應)
+    if (!newsHandled) {
+        const indicatorNews = checkEconomicIndicatorsNews();
+        if (indicatorNews) {
+            setNews(indicatorNews.news, indicatorNews.isWarning);
+            newsHandled = true;
+        }
+    }
+
+    // 3. 最低優先級：政策狀態新聞 (玩家操作導致的結果)
+    if (!newsHandled) {
         if (Math.abs(rateAdjustment) > 0.5) {
             setNews('🚨 突發新聞：聯儲突然大幅調整利率，市場恐慌！', true);
         } else if (rateAdjustment === 0) {
@@ -138,7 +123,6 @@ function handleNextTurn() {
     rateInput.value = 0; 
 }
 
-// V9.0: 移除 handleTrading 函數
 
 // --- 綁定 UI 事件 ---
 
@@ -155,8 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     commitBtn.addEventListener('click', handleNextTurn);
-    
-    // V9.0: 移除交易按鈕的事件綁定
     
     initializeGame();
 });
