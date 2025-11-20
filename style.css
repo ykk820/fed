@@ -1,4 +1,4 @@
-/* assets/style.css */
+/* style.css (現在位於根目錄) */
 
 :root {
     --primary-color: #007bff;
@@ -100,7 +100,7 @@ main {
 
 /* 新聞區塊 */
 #message-section {
-    background-color: #fff3cd; /* 輕微的警示色 */
+    background-color: #fff3cd; 
     color: #856404;
     border: 1px solid #ffeeba;
     padding: 15px 20px;
@@ -119,6 +119,6 @@ main {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 20px;
-    min-height: 400px; /* 確保圖表有足夠空間 */
+    min-height: 400px; 
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
