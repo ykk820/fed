@@ -1,4 +1,4 @@
-// main.js - 遊戲主入口與流程控制 (V7.0)
+// main.js - 遊戲主入口與流程控制 (V8.0)
 
 import { GAME_STATE, initializeModel, nextTurnModel, handleTransaction } from './model.js'; 
 import { updateUI, drawCombinedChart, setNews, setTransactionFeedback } from './ui.js'; 
@@ -34,7 +34,7 @@ async function getFredData(seriesId) {
     }
 }
 
-// --- 遊戲流程控制 (保持不變) ---
+// --- 遊戲流程控制 ---
 
 async function initializeGame() {
     setNews('正在從 FRED 獲取歷史數據... 📶');
@@ -66,12 +66,13 @@ async function initializeGame() {
         });
         
         drawCombinedChart();
-        updateUI(0); // 確保初始化時更新 UI
+        updateUI(0); 
         setNews('🚀 遊戲初始化完成！您現在是聯儲主席，請發布您的第一個決策。');
 
     } else {
-        console.error("無法初始化遊戲，請檢查 API Key 或數據來源。");
-        setNews('❌ 錯誤：無法初始化遊戲，請檢查控制台。', true);
+        // V8.0: 修正錯誤提示，提供更友善、更具體的資訊
+        console.error("初始化失敗，無法從 FRED API 獲取必要數據。請檢查網路連接或 API Key 是否有效。");
+        setNews('❌ 初始化失敗：無法連接至外部經濟數據服務。請檢查您的網路連線或 API Key (3d7072fc1b5ebe22c5c34dac7ac5f308) 是否仍有效。遊戲無法啟動。', true);
     }
 }
 
@@ -120,23 +121,19 @@ function handleTrading(type) {
     const quantityInput = document.getElementById('trade-quantity');
     let quantity = parseInt(quantityInput.value);
     
-    // V7.0: 交易輸入驗證修正
     if (isNaN(quantity) || quantity <= 0) {
         setTransactionFeedback('❌ 交易失敗：請輸入有效的正整數股數。', false);
         return;
     }
 
-    // 呼叫模型中的交易邏輯
     const { message, isSuccess } = handleTransaction(type, quantity);
     
     setTransactionFeedback(message, isSuccess);
     
-    // V7.0: 成功交易後清空輸入欄
     if (isSuccess) {
         quantityInput.value = '';
     }
     
-    // 交易後更新介面數據 (傳入 0 讓 rateAdjustment 顏色保持中性)
     updateUI(0); 
 }
 
@@ -152,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     rateInput.addEventListener('input', () => {
         const rateAdjustment = parseFloat(rateInput.value) / 100; 
-        updateUI(rateAdjustment); // V7.0: 傳遞 adjustment amount 以更新顏色
+        updateUI(rateAdjustment); 
         
         const targetRate = GAME_STATE.currentRate + rateAdjustment;
         setNews(`💡 預計調整後利率為: ${targetRate.toFixed(2)}%`);
