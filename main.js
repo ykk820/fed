@@ -1,4 +1,4 @@
-// main.js - 遊戲主入口與流程控制 (V12.0 宏觀反應版)
+// main.js - 遊戲主入口與流程控制
 
 import { GAME_STATE, initializeModel, nextTurnModel } from './model.js'; 
 import { updateUI, drawCombinedChart, setNews } from './ui.js'; 
@@ -7,9 +7,8 @@ import { updateUI, drawCombinedChart, setNews } from './ui.js';
 const START_RATE = 4.25;    // 聯邦基金利率
 const START_CPI = 3.0;      // 通脹率
 const START_UNEMP = 4.0;    // 失業率
-const START_PORTFOLIO = 10000; // 初始資產
 
-// --- 經濟指標新聞生成函數 (V12.0 新增) ---
+// --- 經濟指標新聞生成函數 (V12.0) ---
 function checkEconomicIndicatorsNews() {
     const CPI_TARGET = 2.0;
     const UNEMP_TARGET = 4.0;
@@ -46,12 +45,7 @@ function checkEconomicIndicatorsNews() {
 
 async function initializeGame() {
     
-    // V10.0: 直接使用靜態值啟動遊戲
-    
     initializeModel(START_RATE, START_CPI, START_UNEMP);
-
-    // 設置初始資產
-    // V11.0: 移除 playerPortfolio 相關邏輯
     
     // 確保歷史記錄至少有一個點
     GAME_STATE.history.push({
@@ -62,7 +56,6 @@ async function initializeGame() {
         gdpGrowth: 2.0, 
         sentiment: 0, 
         stockIndex: GAME_STATE.stockIndex, 
-        // V11.0: 移除 portfolio
     });
     
     drawCombinedChart();
@@ -81,7 +74,6 @@ function handleNextTurn() {
     
     const { credibilityDelta, eventTriggered } = nextTurnModel(rateAdjustment);
     
-    // --- V12.0 新聞優先級處理 ---
     let newsHandled = false;
     
     // 1. 最高優先級：隨機事件新聞 (黑天鵝)
