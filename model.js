@@ -1,21 +1,22 @@
-// model.js - 核心經濟模擬模型
+// model.js - 核心經濟模擬模型 (V14.0 季度週期版)
 
 // --- 核心常數 ---
 const CPI_TARGET = 2.0;
 const UNEMP_TARGET = 4.0;
 const NEUTRAL_RATE = 3.5; 
-const LAG_PERIOD = 4; 
-const SHOCK_PROBABILITY = 0.20; 
+const LAG_PERIOD = 4; // 現在 Lag Period 代表 4 個季度 (1 年)
+const SHOCK_PROBABILITY = 0.35; // 季度事件發生機率提高
+const TIME_MULTIPLIER = 2.0; // V14.0：將所有經濟變化放大 2.0 倍，使季度影響更劇烈
 
 // 重大事件清單
 const SHOCK_EVENTS = [
-    { name: 'Global Supply Chain Crisis', cpi: 0.8, gdp: -0.5, sentiment: -15, news: '💥 突發：亞洲主要工廠關閉，全球供應鏈崩潰！通膨壓力驟升！', isWarning: true },
-    { name: 'Major Tech Breakthrough', cpi: -0.2, gdp: 0.8, sentiment: 20, news: '🚀 市場狂熱：突破性 AI 技術發布，生產力預期飆升！', isWarning: false },
-    { name: 'Geopolitical Energy Crisis', cpi: 1.5, gdp: -0.3, sentiment: -25, news: '🔥 警告：中東衝突升級，原油價格飆破 $150！滯脹風險大增！', isWarning: true },
-    { name: 'Massive Government Stimulus', cpi: 0.5, gdp: 0.5, sentiment: 10, news: '💰 國會通過 $2 兆基礎建設案，流動性將湧入市場。', isWarning: false },
-    { name: 'Banking Sector Instability', cpi: -0.1, gdp: -0.8, sentiment: -30, news: '📉 金融危機恐懼：數家銀行倒閉，信貸緊縮開始！', isWarning: true },
-    { name: 'Housing Market Bubble Burst', cpi: -0.3, gdp: -0.6, sentiment: -20, news: '🚨 房地產市場崩潰！房價暴跌，消費者信心嚴重受挫。', isWarning: true },
-    { name: 'Strongest Job Report Ever', cpi: 0.1, gdp: 0.7, sentiment: 15, news: '📈 就業市場火熱，失業率創歷史新低！聯儲面臨升息壓力。', isWarning: false },
+    { name: 'Global Supply Chain Crisis', cpi: 1.5, gdp: -1.0, sentiment: -30, news: '💥 突發：亞洲主要工廠關閉，全球供應鏈崩潰！通膨壓力驟升！', isWarning: true },
+    { name: 'Major Tech Breakthrough', cpi: -0.4, gdp: 1.5, sentiment: 40, news: '🚀 市場狂熱：突破性 AI 技術發布，生產力預期飆升！', isWarning: false },
+    { name: 'Geopolitical Energy Crisis', cpi: 2.5, gdp: -0.8, sentiment: -40, news: '🔥 警告：中東衝突升級，原油價格飆破 $150！滯脹風險大增！', isWarning: true },
+    { name: 'Massive Government Stimulus', cpi: 1.0, gdp: 1.2, sentiment: 20, news: '💰 國會通過 $2 兆基礎建設案，流動性將湧入市場。', isWarning: false },
+    { name: 'Banking Sector Instability', cpi: -0.2, gdp: -1.5, sentiment: -50, news: '📉 金融危機恐懼：數家銀行倒閉，信貸緊縮開始！', isWarning: true },
+    { name: 'Housing Market Bubble Burst', cpi: -0.5, gdp: -1.0, sentiment: -35, news: '🚨 房地產市場崩潰！房價暴跌，消費者信心嚴重受挫。', isWarning: true },
+    { name: 'Strongest Job Report Ever', cpi: 0.2, gdp: 1.4, sentiment: 30, news: '📈 就業市場火熱，失業率創歷史新低！聯儲面臨升息壓力。', isWarning: false },
 ];
 
 
@@ -49,7 +50,6 @@ export function initializeModel(initialRate, initialCPI, initialUnemp) {
     }
 }
 
-// ... (checkRandomEvent, calculateSentiment, calculateCPI, calculateUnemployment, calculateGDP 函數保持不變)
 
 function checkRandomEvent() {
     GAME_STATE.currentShock = {cpi: 0, gdp: 0, sentiment: 0, news: '', isWarning: false}; 
@@ -79,7 +79,7 @@ function calculateSentiment(rateChange) {
         + (gdpImpact * 0.3) 
         + (cpiImpact * 0.2) 
         + shockImpact
-        + (Math.random() - 0.5) * 5;
+        + (Math.random() - 0.5) * 5 * TIME_MULTIPLIER; // 放大隨機性
         
     GAME_STATE.marketSentiment = Math.max(-50, Math.min(50, GAME_STATE.marketSentiment));
 }
@@ -88,9 +88,9 @@ function calculateCPI() {
     const laggedPolicy = GAME_STATE.ratePolicyLag[GAME_STATE.ratePolicyLag.length - LAG_PERIOD - 1]?.rate || GAME_STATE.currentRate;
     const rateEffect = (laggedPolicy - CPI_TARGET) * 0.25; 
     const demandEffect = (GAME_STATE.marketSentiment * 0.015) + (GAME_STATE.gdpGrowth * 0.1); 
-    const externalShock = GAME_STATE.currentShock.cpi || (Math.random() - 0.5) * 0.8;
     
-    const deltaCPI = demandEffect + externalShock - rateEffect;
+    // 放大所有影響因子
+    const deltaCPI = (demandEffect + GAME_STATE.currentShock.cpi - rateEffect) * TIME_MULTIPLIER;
     
     GAME_STATE.cpi += deltaCPI;
     GAME_STATE.cpi = Math.max(0.1, GAME_STATE.cpi);
@@ -100,7 +100,7 @@ function calculateUnemployment() {
     const gdpEffect = (GAME_STATE.gdpGrowth - 2.0) * 0.25; 
     const rateEffect = (GAME_STATE.currentRate - NEUTRAL_RATE) * 0.15;
     
-    const deltaUnemployment = rateEffect - gdpEffect + (Math.random() - 0.5) * 0.2;
+    const deltaUnemployment = (rateEffect - gdpEffect + (Math.random() - 0.5) * 0.2) * TIME_MULTIPLIER;
     
     GAME_STATE.unemployment += deltaUnemployment;
     GAME_STATE.unemployment = Math.max(2.0, GAME_STATE.unemployment); 
@@ -110,9 +110,8 @@ function calculateGDP() {
     const rateEffect = (GAME_STATE.currentRate - NEUTRAL_RATE) * 0.3;
     const sentimentEffect = GAME_STATE.marketSentiment * 0.04;
     const cpiEffect = (GAME_STATE.cpi - CPI_TARGET) * 0.2;
-    const externalShock = GAME_STATE.currentShock.gdp || (Math.random() - 0.5) * 0.5;
     
-    const deltaGDP = sentimentEffect - rateEffect - cpiEffect + externalShock;
+    const deltaGDP = (sentimentEffect - rateEffect - cpiEffect + GAME_STATE.currentShock.gdp + (Math.random() - 0.5) * 0.5) * TIME_MULTIPLIER;
     
     GAME_STATE.gdpGrowth += deltaGDP;
     GAME_STATE.gdpGrowth = Math.max(-5.0, GAME_STATE.gdpGrowth); 
@@ -126,7 +125,8 @@ function calculateStockIndex(rateChange) {
     const rateShock = rateChange * -300; 
     const macroEffect = (GAME_STATE.gdpGrowth / 2) * 50 + (4.0 - GAME_STATE.unemployment) * 50;
     
-    const deltaIndex = (sentimentEffect + rateShock + macroEffect) / 10 + (Math.random() - 0.5) * 50;
+    // 放大季度變化
+    const deltaIndex = (sentimentEffect + rateShock + macroEffect) / 10 + (Math.random() - 0.5) * 100 * TIME_MULTIPLIER;
     const indexMultiplier = 1 + (deltaIndex / GAME_STATE.stockIndex) * 0.5;
     
     GAME_STATE.stockIndex *= indexMultiplier;
@@ -135,11 +135,10 @@ function calculateStockIndex(rateChange) {
 
 /**
  * 券商動態模擬函數
- * 趨勢依賴於市場情緒 (情緒高漲則淨買入，情緒低迷則淨賣出)
  */
 function simulateBrokerageActivity() {
-    const sentimentTrend = GAME_STATE.marketSentiment * 15; 
-    const randomNoise = (Math.random() - 0.5) * 250; 
+    const sentimentTrend = GAME_STATE.marketSentiment * 25; // 權重再次提高，以配合季度波動
+    const randomNoise = (Math.random() - 0.5) * 350; 
     
     const netShares = Math.round(sentimentTrend + randomNoise);
     
@@ -152,18 +151,20 @@ export function updateCredibility(rateChange) {
     const cpiDiff = GAME_STATE.cpi - CPI_TARGET;
     const unemploymentDiff = GAME_STATE.unemployment - UNEMP_TARGET; 
 
+    // 政策衝擊懲罰比例不變
     if (Math.abs(rateChange) > 0.5) {
         credibilityChange -= 10;
     }
 
     const miseryIndex = Math.abs(cpiDiff) + Math.abs(unemploymentDiff);
 
+    // 獎懲調整更快，因為數據變化更劇烈
     if (miseryIndex < 1.0) {
-        credibilityChange += 5; 
+        credibilityChange += 8; 
     } else if (miseryIndex > 4.0) {
-        credibilityChange -= 10; 
+        credibilityChange -= 15; 
     } else {
-        credibilityChange += 1;
+        credibilityChange += 3;
     }
     
     GAME_STATE.credibility += credibilityChange;
@@ -203,8 +204,8 @@ export function nextTurnModel(rateChange) {
         stockIndex: GAME_STATE.stockIndex,
     });
     
-    // 5. 進入下一回合
-    GAME_STATE.currentDate.setMonth(GAME_STATE.currentDate.getMonth() + 1);
+    // V14.0: 進入下一回合 (前進 3 個月)
+    GAME_STATE.currentDate.setMonth(GAME_STATE.currentDate.getMonth() + 3);
 
     return { credibilityDelta, eventTriggered }; 
 }
