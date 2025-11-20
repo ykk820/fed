@@ -1,7 +1,7 @@
-// main.js - 遊戲主入口與流程控制 (V8.0)
+// main.js - 遊戲主入口與流程控制 (V9.0)
 
-import { GAME_STATE, initializeModel, nextTurnModel, handleTransaction } from './model.js'; 
-import { updateUI, drawCombinedChart, setNews, setTransactionFeedback } from './ui.js'; 
+import { GAME_STATE, initializeModel, nextTurnModel } from './model.js'; // V9.0 移除 handleTransaction
+import { updateUI, drawCombinedChart, setNews } from './ui.js'; 
 
 // --- FRED API 獲取 (保持不變) ---
 const FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations";
@@ -46,6 +46,7 @@ async function initializeGame() {
     ]);
     
     if (fedRateData && cpiData && unempData) {
+        // V9.0: 成功邏輯 (保持不變)
         const lastRate = fedRateData[fedRateData.length - 1].value;
         const lastCPI = cpiData[cpiData.length - 1].value;
         const lastUnemp = unempData[unempData.length - 1].value;
@@ -70,9 +71,30 @@ async function initializeGame() {
         setNews('🚀 遊戲初始化完成！您現在是聯儲主席，請發布您的第一個決策。');
 
     } else {
-        // V8.0: 修正錯誤提示，提供更友善、更具體的資訊
-        console.error("初始化失敗，無法從 FRED API 獲取必要數據。請檢查網路連接或 API Key 是否有效。");
-        setNews('❌ 初始化失敗：無法連接至外部經濟數據服務。請檢查您的網路連線或 API Key (3d7072fc1b5ebe22c5c34dac7ac5f308) 是否仍有效。遊戲無法啟動。', true);
+        // V9.0: 備用機制 - 使用靜態數據啟動遊戲 (解決 API 無法連接問題)
+        const START_RATE = 4.25;
+        const START_CPI = 3.0;
+        const START_UNEMP = 4.0;
+        
+        console.error("初始化失敗，無法從 FRED API 獲取必要數據。遊戲已切換至備用靜態模式。");
+        
+        initializeModel(START_RATE, START_CPI, START_UNEMP);
+        
+        // 確保歷史記錄至少有一個點
+        GAME_STATE.history.push({
+            date: "2024-01-01", 
+            rate: START_RATE, 
+            cpi: START_CPI, 
+            unemployment: START_UNEMP, 
+            gdpGrowth: 2.0, 
+            sentiment: 0, 
+            stockIndex: GAME_STATE.stockIndex, 
+            portfolio: GAME_STATE.playerPortfolio,
+        });
+        
+        drawCombinedChart();
+        updateUI(0);
+        setNews('⚠️ 數據服務中斷：遊戲已啟動模擬模式 (使用靜態初始值)。請發布第一個決策。', true);
     }
 }
 
@@ -87,7 +109,7 @@ function handleNextTurn() {
     
     const { credibilityDelta, eventTriggered } = nextTurnModel(rateAdjustment);
     
-    setTransactionFeedback('等待交易指令...'); 
+    // V9.0: 移除交易回饋 (交易介面已移除) 
     
     // --- 新聞優先級處理 ---
     if (eventTriggered) {
@@ -116,36 +138,13 @@ function handleNextTurn() {
     rateInput.value = 0; 
 }
 
-
-function handleTrading(type) {
-    const quantityInput = document.getElementById('trade-quantity');
-    let quantity = parseInt(quantityInput.value);
-    
-    if (isNaN(quantity) || quantity <= 0) {
-        setTransactionFeedback('❌ 交易失敗：請輸入有效的正整數股數。', false);
-        return;
-    }
-
-    const { message, isSuccess } = handleTransaction(type, quantity);
-    
-    setTransactionFeedback(message, isSuccess);
-    
-    if (isSuccess) {
-        quantityInput.value = '';
-    }
-    
-    updateUI(0); 
-}
-
+// V9.0: 移除 handleTrading 函數
 
 // --- 綁定 UI 事件 ---
 
 document.addEventListener('DOMContentLoaded', () => {
     const rateInput = document.getElementById('rate-slider');
     const commitBtn = document.getElementById('commit-decision');
-    const buyBtn = document.getElementById('buy-btn');
-    const sellBtn = document.getElementById('sell-btn');
-
 
     rateInput.addEventListener('input', () => {
         const rateAdjustment = parseFloat(rateInput.value) / 100; 
@@ -157,8 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     commitBtn.addEventListener('click', handleNextTurn);
     
-    buyBtn.addEventListener('click', () => handleTrading('buy'));
-    sellBtn.addEventListener('click', () => handleTrading('sell'));
+    // V9.0: 移除交易按鈕的事件綁定
     
     initializeGame();
 });
