@@ -1,4 +1,4 @@
-// model.js - 核心經濟模擬模型 (V11.0 宏觀專注版)
+// model.js - 核心經濟模擬模型
 
 // --- 核心常數 ---
 const CPI_TARGET = 2.0;
@@ -29,13 +29,11 @@ export let GAME_STATE = {
     gdpGrowth: 2.0,   
     marketSentiment: 0, 
     stockIndex: 4000, 
-    // V11.0 移除 playerPortfolio, cash, stockHoldings
     brokerageFlow: 0,                   
     ratePolicyLag: [], 
     history: [],
     currentShock: {cpi: 0, gdp: 0, sentiment: 0, news: '', isWarning: false}, 
     previousStockIndex: 4000,
-    // V11.0 移除 previousPortfolio
 };
 
 // --- 模型初始化函數 ---
@@ -120,6 +118,7 @@ function calculateGDP() {
     GAME_STATE.gdpGrowth = Math.max(-5.0, GAME_STATE.gdpGrowth); 
 }
 
+
 function calculateStockIndex(rateChange) {
     GAME_STATE.previousStockIndex = GAME_STATE.stockIndex; 
     
@@ -135,13 +134,11 @@ function calculateStockIndex(rateChange) {
 }
 
 /**
- * V9.0/V11.0: 券商動態模擬函數
+ * 券商動態模擬函數
  * 趨勢依賴於市場情緒 (情緒高漲則淨買入，情緒低迷則淨賣出)
  */
 function simulateBrokerageActivity() {
-    // 趨勢依賴於市場情緒 (情緒高漲則淨買入，情緒低迷則淨賣出)
-    const sentimentTrend = GAME_STATE.marketSentiment * 15; // 權重稍微調高，讓趨勢更明顯
-    // 隨機波動：維持適度的隨機性
+    const sentimentTrend = GAME_STATE.marketSentiment * 15; 
     const randomNoise = (Math.random() - 0.5) * 250; 
     
     const netShares = Math.round(sentimentTrend + randomNoise);
@@ -179,8 +176,6 @@ export function updateCredibility(rateChange) {
 export function nextTurnModel(rateChange) {
     const eventTriggered = checkRandomEvent();
     
-    // V11.0 移除 previousPortfolio 更新
-
     // 1. 儲存政策到時滯佇列
     GAME_STATE.ratePolicyLag.push({ rate: GAME_STATE.currentRate + rateChange, month: GAME_STATE.currentDate.getMonth() });
     
@@ -196,10 +191,8 @@ export function nextTurnModel(rateChange) {
     calculateCPI(); 
     calculateStockIndex(rateChange);
     simulateBrokerageActivity(); 
-    // V11.0 移除 updatePortfolioValue()
 
     // 4. 記錄歷史
-    // V11.0 移除 portfolio 記錄
     GAME_STATE.history.push({
         date: GAME_STATE.currentDate.toISOString().substring(0, 7),
         rate: GAME_STATE.currentRate,
