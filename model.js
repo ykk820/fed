@@ -1,4 +1,4 @@
-// model.js - 核心經濟模擬模型 (V9.0 券商邏輯版)
+// model.js - 核心經濟模擬模型 (V11.0 宏觀專注版)
 
 // --- 核心常數 ---
 const CPI_TARGET = 2.0;
@@ -6,7 +6,6 @@ const UNEMP_TARGET = 4.0;
 const NEUTRAL_RATE = 3.5; 
 const LAG_PERIOD = 4; 
 const SHOCK_PROBABILITY = 0.20; 
-const INITIAL_NET_WORTH = 10000; // V9.0: 初始淨資產
 
 // 重大事件清單
 const SHOCK_EVENTS = [
@@ -30,13 +29,13 @@ export let GAME_STATE = {
     gdpGrowth: 2.0,   
     marketSentiment: 0, 
     stockIndex: 4000, 
-    playerPortfolio: INITIAL_NET_WORTH, // V9.0: 淨資產
-    brokerageFlow: 0,                   // V9.0: 券商淨交易股數
+    // V11.0 移除 playerPortfolio, cash, stockHoldings
+    brokerageFlow: 0,                   
     ratePolicyLag: [], 
     history: [],
     currentShock: {cpi: 0, gdp: 0, sentiment: 0, news: '', isWarning: false}, 
     previousStockIndex: 4000,
-    previousPortfolio: INITIAL_NET_WORTH,
+    // V11.0 移除 previousPortfolio
 };
 
 // --- 模型初始化函數 ---
@@ -46,14 +45,13 @@ export function initializeModel(initialRate, initialCPI, initialUnemp) {
     GAME_STATE.unemployment = initialUnemp;
     
     GAME_STATE.previousStockIndex = GAME_STATE.stockIndex;
-    GAME_STATE.previousPortfolio = GAME_STATE.playerPortfolio;
     
     for (let i = 0; i < LAG_PERIOD + 2; i++) {
          GAME_STATE.ratePolicyLag.push({ rate: initialRate, month: i });
     }
 }
 
-// ... (calculateSentiment, calculateCPI, calculateUnemployment, calculateGDP 函數保持不變)
+// ... (checkRandomEvent, calculateSentiment, calculateCPI, calculateUnemployment, calculateGDP 函數保持不變)
 
 function checkRandomEvent() {
     GAME_STATE.currentShock = {cpi: 0, gdp: 0, sentiment: 0, news: '', isWarning: false}; 
@@ -72,7 +70,55 @@ function checkRandomEvent() {
     return false;
 }
 
-// ... (其他 calculateXXX 函數保持不變) ...
+function calculateSentiment(rateChange) {
+    const policyImpact = rateChange * (GAME_STATE.credibility / 100) * 20; 
+    const gdpImpact = (GAME_STATE.gdpGrowth - 2.0) * 5;
+    const cpiImpact = (GAME_STATE.cpi - CPI_TARGET) * -5; 
+    const shockImpact = GAME_STATE.currentShock.sentiment;
+    
+    GAME_STATE.marketSentiment = GAME_STATE.marketSentiment * 0.7 
+        + (policyImpact * 0.5) 
+        + (gdpImpact * 0.3) 
+        + (cpiImpact * 0.2) 
+        + shockImpact
+        + (Math.random() - 0.5) * 5;
+        
+    GAME_STATE.marketSentiment = Math.max(-50, Math.min(50, GAME_STATE.marketSentiment));
+}
+
+function calculateCPI() {
+    const laggedPolicy = GAME_STATE.ratePolicyLag[GAME_STATE.ratePolicyLag.length - LAG_PERIOD - 1]?.rate || GAME_STATE.currentRate;
+    const rateEffect = (laggedPolicy - CPI_TARGET) * 0.25; 
+    const demandEffect = (GAME_STATE.marketSentiment * 0.015) + (GAME_STATE.gdpGrowth * 0.1); 
+    const externalShock = GAME_STATE.currentShock.cpi || (Math.random() - 0.5) * 0.8;
+    
+    const deltaCPI = demandEffect + externalShock - rateEffect;
+    
+    GAME_STATE.cpi += deltaCPI;
+    GAME_STATE.cpi = Math.max(0.1, GAME_STATE.cpi);
+}
+
+function calculateUnemployment() {
+    const gdpEffect = (GAME_STATE.gdpGrowth - 2.0) * 0.25; 
+    const rateEffect = (GAME_STATE.currentRate - NEUTRAL_RATE) * 0.15;
+    
+    const deltaUnemployment = rateEffect - gdpEffect + (Math.random() - 0.5) * 0.2;
+    
+    GAME_STATE.unemployment += deltaUnemployment;
+    GAME_STATE.unemployment = Math.max(2.0, GAME_STATE.unemployment); 
+}
+
+function calculateGDP() {
+    const rateEffect = (GAME_STATE.currentRate - NEUTRAL_RATE) * 0.3;
+    const sentimentEffect = GAME_STATE.marketSentiment * 0.04;
+    const cpiEffect = (GAME_STATE.cpi - CPI_TARGET) * 0.2;
+    const externalShock = GAME_STATE.currentShock.gdp || (Math.random() - 0.5) * 0.5;
+    
+    const deltaGDP = sentimentEffect - rateEffect - cpiEffect + externalShock;
+    
+    GAME_STATE.gdpGrowth += deltaGDP;
+    GAME_STATE.gdpGrowth = Math.max(-5.0, GAME_STATE.gdpGrowth); 
+}
 
 function calculateStockIndex(rateChange) {
     GAME_STATE.previousStockIndex = GAME_STATE.stockIndex; 
@@ -89,25 +135,18 @@ function calculateStockIndex(rateChange) {
 }
 
 /**
- * V9.0 新增：券商動態模擬函數
- * 券商淨交易量 = (市場情緒趨勢) + 隨機波動
+ * V9.0/V11.0: 券商動態模擬函數
+ * 趨勢依賴於市場情緒 (情緒高漲則淨買入，情緒低迷則淨賣出)
  */
 function simulateBrokerageActivity() {
-    const sentimentTrend = GAME_STATE.marketSentiment * 10; // 情緒高漲則淨買入，情緒低迷則淨賣出
-    const randomNoise = (Math.random() - 0.5) * 200; // 隨機波動
+    // 趨勢依賴於市場情緒 (情緒高漲則淨買入，情緒低迷則淨賣出)
+    const sentimentTrend = GAME_STATE.marketSentiment * 15; // 權重稍微調高，讓趨勢更明顯
+    // 隨機波動：維持適度的隨機性
+    const randomNoise = (Math.random() - 0.5) * 250; 
     
-    // 淨交易量：四捨五入到整數
     const netShares = Math.round(sentimentTrend + randomNoise);
     
     GAME_STATE.brokerageFlow = netShares;
-}
-
-/**
- * V9.0：更新玩家淨資產（資產完全隨指數被動增長）
- */
-function updatePortfolioValue() {
-    const indexMultiplier = GAME_STATE.stockIndex / GAME_STATE.previousStockIndex;
-    GAME_STATE.playerPortfolio *= indexMultiplier;
 }
 
 
@@ -140,7 +179,7 @@ export function updateCredibility(rateChange) {
 export function nextTurnModel(rateChange) {
     const eventTriggered = checkRandomEvent();
     
-    GAME_STATE.previousPortfolio = GAME_STATE.playerPortfolio; // V9.0: 記錄前一期淨資產
+    // V11.0 移除 previousPortfolio 更新
 
     // 1. 儲存政策到時滯佇列
     GAME_STATE.ratePolicyLag.push({ rate: GAME_STATE.currentRate + rateChange, month: GAME_STATE.currentDate.getMonth() });
@@ -156,11 +195,11 @@ export function nextTurnModel(rateChange) {
     calculateUnemployment();
     calculateCPI(); 
     calculateStockIndex(rateChange);
-    simulateBrokerageActivity(); // V9.0: 模擬券商交易量
-    updatePortfolioValue();     // V9.0: 更新玩家資產
+    simulateBrokerageActivity(); 
+    // V11.0 移除 updatePortfolioValue()
 
     // 4. 記錄歷史
-    const currentPortfolio = GAME_STATE.playerPortfolio;
+    // V11.0 移除 portfolio 記錄
     GAME_STATE.history.push({
         date: GAME_STATE.currentDate.toISOString().substring(0, 7),
         rate: GAME_STATE.currentRate,
@@ -169,7 +208,6 @@ export function nextTurnModel(rateChange) {
         gdpGrowth: GAME_STATE.gdpGrowth,
         sentiment: GAME_STATE.marketSentiment,
         stockIndex: GAME_STATE.stockIndex,
-        portfolio: currentPortfolio, 
     });
     
     // 5. 進入下一回合
@@ -177,5 +215,3 @@ export function nextTurnModel(rateChange) {
 
     return { credibilityDelta, eventTriggered }; 
 }
-
-// V9.0 移除 handleTransaction 函數
