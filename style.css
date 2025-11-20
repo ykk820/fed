@@ -1,13 +1,15 @@
-/* style.css (現在位於根目錄) */
+/* style.css (V7.0 UX 優化版) */
 
 :root {
-    --primary-color: #007bff;
-    --secondary-color: #6c757d;
-    --background-light: #f8f9fa;
+    --primary-color: #334e68; /* 深藍灰 */
+    --accent-color: #27c0a9;  /* 綠色調 */
+    --background-light: #f7f9fc;
     --panel-bg: #ffffff;
-    --border-color: #dee2e6;
+    --border-color: #e4e7eb;
     --danger-color: #dc3545;
     --success-color: #28a745;
+    --neutral-color: #6c757d;
+    --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 body {
@@ -24,66 +26,105 @@ header {
     color: white;
     padding: 20px 0;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 main {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 20px auto;
     padding: 0 20px;
 }
 
-.interface-panel {
+.card {
     background-color: var(--panel-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-light);
+    transition: box-shadow 0.3s; /* V7.0: 增加卡片陰影動畫 */
+}
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-#interface-section {
+h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 8px;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.4em; /* V7.0: 字體微調 */
+}
+
+/* --- 佈局結構 --- */
+#top-section {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.5fr 1fr 1fr; /* 決策 | 數據 | 交易 */
     gap: 20px;
+    margin-bottom: 20px;
 }
 
-/* 數據顯示 */
-#data-display p {
-    margin: 8px 0;
-    font-size: 1.1em;
+#bottom-section {
+    display: grid;
+    grid-template-columns: 1fr 2fr; /* 資產 | 新聞 */
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* 圖表區塊 (佔滿下方寬度) */
+#chart-section {
+    min-height: 450px;
+}
+
+/* --- 數據顯示 --- */
+.data-group p {
+    margin: 8px 0; /* V7.0: 增加行間距 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .large-value {
-    font-size: 1.4em;
-    font-weight: bold;
-    color: var(--primary-color);
+    font-size: 1.3em;
+    font-weight: 700;
 }
 
 .data-value {
+    font-weight: 600;
+    color: #212529;
+}
+
+.total-portfolio {
+    border-top: 1px dashed var(--border-color);
+    padding-top: 10px;
+    margin-top: 10px !important;
+    font-size: 1.4em !important;
+}
+
+/* --- 動態指示 --- */
+.change-indicator {
     font-weight: bold;
+    font-size: 0.9em;
+    padding-left: 5px;
 }
 
-/* 決策介面 */
-#decision-interface label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: bold;
+.positive { color: var(--success-color); }
+.negative { color: var(--danger-color); }
+.neutral { color: var(--neutral-color); }
+
+/* V7.0: 調整滑桿的文字顏色 */
+#rate-adjustment-display.positive-adjust { color: var(--danger-color); } /* 升息 */
+#rate-adjustment-display.negative-adjust { color: var(--success-color); } /* 降息 */
+#rate-adjustment-display.zero-adjust { color: var(--neutral-color); } /* 不變 */
+
+
+/* --- 決策與交易按鈕 --- */
+input[type="range"] {
+    width: 70%;
 }
 
-.slider-container {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-#rate-slider {
-    flex-grow: 1;
-    margin-right: 15px;
-}
-
-#commit-decision {
-    background-color: var(--success-color);
+.primary-btn {
+    background-color: var(--accent-color);
     color: white;
     border: none;
     padding: 12px 25px;
@@ -91,34 +132,64 @@ main {
     cursor: pointer;
     font-size: 1em;
     width: 100%;
+    margin-top: 20px;
     transition: background-color 0.2s;
 }
 
-#commit-decision:hover {
-    background-color: #1e7e34;
+.primary-btn:hover {
+    background-color: #1e8774;
 }
 
-/* 新聞區塊 */
-#message-section {
-    background-color: #fff3cd; 
-    color: #856404;
-    border: 1px solid #ffeeba;
-    padding: 15px 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
+.transaction-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
 }
 
-#news-ticker {
-    font-style: italic;
-    font-weight: 500;
+.buy-btn, .sell-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: opacity 0.2s; /* V7.0: 增加互動動畫 */
 }
 
-/* 圖表區塊 */
-#chart-section {
-    background-color: var(--panel-bg);
+.buy-btn {
+    background-color: var(--success-color);
+}
+.sell-btn {
+    background-color: var(--danger-color);
+}
+.buy-btn:hover, .sell-btn:hover {
+    opacity: 0.9;
+}
+
+
+#trade-quantity {
+    width: 90%;
+    padding: 8px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
-    min-height: 400px; 
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+.feedback-message {
+    font-weight: 700 !important;
+    padding-top: 10px;
+    min-height: 20px; /* V7.0: 確保空間不跳動 */
+}
+
+/* --- 新聞區塊 --- */
+.news-panel h2 {
+    color: var(--danger-color);
+    border-bottom-color: var(--danger-color);
+}
+
+.news-content {
+    font-style: italic;
+    font-size: 1.1em;
+    line-height: 1.8;
 }
